@@ -1,99 +1,54 @@
 <br>
 
-# ADC Example
+## PWM Example
 
+<br>
 
-This project demonstrates how to make a basic configuration of the internal ADC. To get the analog signal for the ADC a potentiometer can be connected to the longan nano in the following manner.
+This project shows how to create a PWM signal on GD32V. A timer is used to generate the period and the counter for the PWM signal. The example will generate a PWM triangle wave on the green LED on the longan board.
+The example uses a frequency of 13.5KHz, but this can be configured to suit most needs. Two settings affect the frequency of the PWM signal, the prescaler and the period. the frequency can be calculated from:
+    <br><br> **frequency** = **core clock** / **(prescaler * period)**<br><br>
+The period also sets the resolution of the duty cycle. For example if you want to create a 50Hz signal with as high resolution as possible
+<br><br>**108MHz** / **(prescaler * 65535)** = **50Hz** => **prescaler** = **108MHz / 65535 * 50Hz** = **32.959...**<br><br>
+Which would give either full resolution (65536) with a prescaler of 33, and about 0.1% error in frequency (~50.06Hz), or prescaler of 36 with a resolution of 60000 and no error excluding core clock error (Which would be miniscule in this context).
 
-Potentiometer:
-- Pin1 <---> VCC
-- Pin2 <---> A4
-- Pin3 <---> GND
+### Functions
 
-The program lets the potentiometer act like a "dimmer" for the red LED on the longa board.
-It measures the analog voltage on pin A3 and generates a PWM signal with a duty cycle based on the voltage measured.
-
-All the needed code in this project is available in the **app.c** file. All of the code related to configuring the ADC is located in
-
-```c
-void init_ADC_example()
-```
-
-This example only covers the most basic just to get the ADC to take a measurement. To get a more full understanding of how the ADC works the manual (chapter 11, pg 153) has a lot of information on the different settings and modes available.
-<br><br>
-
-## Important Functions Used
-### ADC Initialization
-```c
-void rcu_adc_clock_config(uint32_t adc_psc)
-```
-This sets the ADC peripheral clock prescaler. Since the ADC in GD32VF103 has a maximum samplerate at 2MHz (for 12bit) this prescaler is typically needed to bring the sampling speed from the usually much higher core clock. For this project the core clock is 108MHz. With an 8x prescaler that lets the ADC clock run at 13.5MHz.
+The configuration for both the timer and channel uses structs to apply and manage settings. Since the timer is a very versatile peripheral the struct takes a vast amount of different settings. Refer to the manual and the official examples for more examples of the different settings available. For the specific settings to make a basic PWM signal you can refer to the source in this example. 
 
 ```c
-void adc_mode_config(uint32_t mode)
+void timer_struct_para_init(timer_parameter_struct* initpara)
+void timer_init(uint32_t timer_periph, timer_parameter_struct* initpara)
 ```
-This function sets the relationship between the two ADC's ADC0 and ADC1. Although this example sets them as independent with **ADC_MODE_FREE** you can also set the two ADCs to take measurements in synch, or in an interleaved fashion.
-
+First create a **timer_parameter_struct** and initialize it with default values with **timer_struct_para_init()** then apply the appropriate settings to the members in the timer struct. When done apply the settings to the timer (**timer_periph**) that you want to use with the **timer_init()** function.
 
 ```c
-void adc_special_function_config(uint32_t adc_periph, uint32_t function, ControlStatus newvalue)
+void timer_channel_output_struct_para_init(timer_oc_parameter_struct *ocpara)
+void timer_channel_output_config(uint32_t timer_periph, uint16_t channel, timer_oc_parameter_struct* ocpara)
 ```
-This function has two purposes, it configures scan mode, and wether conversion should be continous. Scan mode refers to wether the ADC should "scan" over multiple channels. Continuity sets if the ADC should keep converting after having completed a conversion.
-- uint32_t **adc_periph**
-    - Selects which ADC to apply the setting to.
-- uint32_t **function**
-    - Selects which function to enable or disable. Multiple functions can be selected using bitwise OR. Available options can be found in the manual and the **gd32vf103_adc.h/.c** files.
-- ControlStatus **newvalue**
-    - **ENABLE** or **DISABLE**
+The channel is configure in the same manner as the timer. Create the **timer_oc_parameter_struct** and initialize the struct. Then apply the appropriate settings and configure the channel.
 
 ```c
-void adc_data_alignment_config(uint32_t adc_periph, uint32_t data_alignment)
+void timer_channel_output_mode_config(uint32_t timer_periph, uint16_t channel, uint16_t ocmode)
 ```
-Sets the alignment of the padding bits in the ADC conversion. Since the ADC doesn't fill an entire 16bits you can select where zeroes are filled in. **ADC_DATAALIGN_RIGHT** fills zeroes above the MSB. **ADC_DATAALIGN_LEFT** fills in zeroes below the LSB.
+Configures the channel mode. For this example we are using PWM0 mode which is appropriate for generating a basic PWM signal.
 
 ```c
-void adc_channel_length_config(uint32_t adc_periph, uint8_t adc_channel_group, uint32_t length)
+void timer_channel_output_shadow_config(uint32_t timer_periph, uint16_t channel, uint16_t ocshadow)
 ```
-When in scanning mode this lets you select how many channels to scan over. For the example scanning mode is not used though so just one is selected. Refer to the manual for mor information on using scan modes.
+The shadow-register is used for capture-compare and should be disabled for the PWM signal.
 
 ```c
-void adc_regular_channel_config(uint32_t adc_periph, uint8_t rank, uint8_t adc_channel, uint32_t sample_time)
+void timer_auto_reload_shadow_enable(uint32_t timer_periph)
 ```
-This function places an ADC channel in the scan queue. Since we are only using one channel in the example we place our channel at the zeroeth rank which would be the first channel measured. This function also selects the sample time, for the example we used a 1MHz sample time. The sample time is calculated as:
-
-Sample_rate = Core_clock/(prescaler * sample_time)<br>
-In the example code: 1MHz = 108MHz/(8*13.5) 
-
-uint32_t **sample_time**
-- Can be set to the following values
-    - **ADC_SAMPLETIME_1POINT5**
-    - **ADC_SAMPLETIME_7POINT5**
-    - **ADC_SAMPLETIME_13POINT5**
-    - **ADC_SAMPLETIME_28POINT5**
-    - **ADC_SAMPLETIME_41POINT5**
-    - **ADC_SAMPLETIME_55POINT5**
-    - **ADC_SAMPLETIME_71POINT5**
-    - **ADC_SAMPLETIME_239POINT5**
+Enables the timer to automatically reset each time it overflows.
 ```c
-void adc_external_trigger_source_config(uint32_t adc_periph, uint8_t adc_channel_group, uint32_t external_trigger_source)
+void timer_enable(uint32_t timer_periph)
 ```
-An external trigger can be selected for ADC conversions. For example a timer can be set as the trigger to start a conversion each time it overflows. The example however does not utilize an external trigger so it is set to NONE. Check the manual for how to set an external trigger as the source.
+Starts the timer.
 
 ```c
-void adc_calibration_enable(uint32_t adc_periph)
+void timer_channel_output_pulse_value_config(uint32_t timer_periph, uint16_t channel, uint32_t pulse)
 ```
-This function calibrates the ADC against a known voltage (inside the MCU) use a delay to make sure that the input voltage has stabilized after a reset.
-
-
-```c
-void adc_software_trigger_enable(uint32_t adc_periph, uint8_t adc_channel_group)
-```
-This function triggers a conversion to start. Since the example uses continious conversion this only needs to be called once. When using software trigger in non-continious mode this needs to be called each time a conversion should occur.
-
-```c
-ADC_RDATA(adcx)
-```
-This is a macro which points at the finished conversion. To read the result of a conversion use for example:
-
-- uint16_t analog_value = ADC_RDATA(ADC0);
-
+After having done a successful configuration use this function to set the duty cycle. The duty cycle will be:
+<br><br> **duty cycle** = **pulse** / **period** <br><br>
+With the period being the one set in the timer configuration.

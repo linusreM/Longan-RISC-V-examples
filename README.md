@@ -6,7 +6,9 @@ To make getting started as easy as possible the examples in general only include
 
 ## Using the examples
 
-All of the code that's different between the project is inside the **src/app.c** file. All of the projects has an individual README.md explaining the program.
+All of the code that's different between the projects is inside the **src/app.c** file. All of the projects has an individual README.md which explains the program.
+
+### Opening
 
 Use PlatformIO to open a project, just open the PIO home page, then press open project and navigate to one of the example directories.
 
