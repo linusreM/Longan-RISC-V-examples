@@ -31,23 +31,24 @@ usb_core_driver USB_OTG_dev =
 
 size_t read_usb_serial(uint8_t* data){
     size_t ret = 0;
+    static uint8_t receive_buffer[64] = {'\0'};
     usb_buffer.index = 0;
     if (USBD_CONFIGURED == USB_OTG_dev.dev.cur_status){
         while(packet_receive == 1){
-            packet_receive = 0;
-            usbd_ep_recev (&USB_OTG_dev, CDC_ACM_DATA_OUT_EP, data, 64);
-            delay_1ms(1);
             if(receive_length > 0){
-                memcpy(&usb_buffer.buffer[usb_buffer.index], data, receive_length);
+                memcpy(&usb_buffer.buffer[usb_buffer.index], receive_buffer, receive_length);
                 usb_buffer.index += receive_length;
                 ret += receive_length;
             }
-            
+            packet_receive = 0;
+            receive_length = 0;
+            usbd_ep_recev (&USB_OTG_dev, CDC_ACM_DATA_OUT_EP, receive_buffer, 64);
+            delay_1ms(1);
         }
         usb_buffer.buffer[usb_buffer.index++] = '\0';
         memcpy(data, usb_buffer.buffer, usb_buffer.index);
     }
-    return usb_buffer.index;  
+    return usb_buffer.index -1;  
 }
 
 
