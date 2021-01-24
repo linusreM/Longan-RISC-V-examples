@@ -9,6 +9,9 @@ To try the example put the files in the **put_in_tf_card** folder in the root di
 
 The program will write a text file to disk and then open some images from the card to display a clock.
 
+You can convert images using this useful web-tool: https://lvgl.io/tools/imageconverter
+Use RGB656 binary as the output.
+
 ## Functions
 ```c
 FRESULT f_mount (
